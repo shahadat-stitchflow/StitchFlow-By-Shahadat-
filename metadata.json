@@ -1,0 +1,7 @@
+{
+  "name": "StitchFlow PLM",
+  "description": "A comprehensive end-to-end garments product development and production tracking system designed for merchandisers and suppliers to manage the lifecycle from buyer inquiry to final payment.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
