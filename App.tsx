@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Project, WorkflowStep, UserProfile } from './types';
 import { MOCK_PROJECTS, createInitialWorkflow } from './constants';
@@ -7,7 +6,7 @@ import { ProjectDetailView } from './components/ProjectDetailView';
 import { MerchFeed } from './components/MerchFeed';
 import { UserProfileView } from './components/UserProfileView';
 import { AIAdvisor } from './components/AIAdvisor';
-import { getStyleSuggestions } from './services/geminiService';
+import { getStyleSuggestions, analyzeTechPackFile } from './services/geminiService';
 
 const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>(MOCK_PROJECTS);
@@ -16,8 +15,11 @@ const App: React.FC = () => {
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [isAnalyzingTP, setIsAnalyzingTP] = useState(false);
+  const [tpAiSummary, setTpAiSummary] = useState<string | null>(null);
   
   const addModalFileRef = useRef<HTMLInputElement>(null);
+  const techPackFileRef = useRef<HTMLInputElement>(null);
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('stitchflow_theme');
@@ -58,7 +60,9 @@ const App: React.FC = () => {
     fabricType: '',
     targetFob: 0,
     gender: 'Mens',
-    colorways: '1'
+    colorways: '1',
+    techPackName: '',
+    techPackUrl: ''
   });
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
@@ -107,6 +111,30 @@ const App: React.FC = () => {
     }
   };
 
+  const handleTechPackSelection = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsAnalyzingTP(true);
+      setTpAiSummary(null);
+      
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        setNewProject(prev => ({ 
+          ...prev, 
+          techPackName: file.name,
+          techPackUrl: base64
+        }));
+
+        // Trigger AI Analysis
+        const summary = await analyzeTechPackFile(base64, file.type);
+        setTpAiSummary(summary);
+        setIsAnalyzingTP(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAddProject = (e: React.FormEvent) => {
     e.preventDefault();
     const id = `p${Date.now()}`;
@@ -114,13 +142,25 @@ const App: React.FC = () => {
       ...newProject,
       id,
       currentStepIndex: 0,
-      workflow: createInitialWorkflow(),
-      techPackUrl: '#',
+      // Fixed: Removed duplicate workflow property assignment
       todoItems: [],
-      merchandiserNotes: ''
+      merchandiserNotes: '',
+      // Attach the AI tech pack summary to the first record or as project notes
+      workflow: createInitialWorkflow().map((step, idx) => {
+        if (idx === 0 && tpAiSummary) {
+          return { ...step, aiSummary: `Tech Pack Analysis: ${tpAiSummary}` };
+        }
+        return step;
+      })
     };
     setProjects([project, ...projects]);
     setIsAddModalOpen(false);
+    resetForm();
+    setSelectedProjectId(id);
+    setCurrentView('dashboard');
+  };
+
+  const resetForm = () => {
     setNewProject({
       styleName: '',
       styleNumber: '',
@@ -132,10 +172,11 @@ const App: React.FC = () => {
       fabricType: '',
       targetFob: 0,
       gender: 'Mens',
-      colorways: '1'
+      colorways: '1',
+      techPackName: '',
+      techPackUrl: ''
     });
-    setSelectedProjectId(id);
-    setCurrentView('dashboard');
+    setTpAiSummary(null);
   };
 
   const renderContent = () => {
@@ -165,7 +206,7 @@ const App: React.FC = () => {
           <div className="flex justify-between h-20 items-center">
             <div className="flex items-center gap-3 cursor-pointer" onClick={() => {setSelectedProjectId(null); setCurrentView('dashboard');}}>
               <div className="w-11 h-11 bg-slate-900 dark:bg-indigo-600 rounded-2xl flex items-center justify-center shadow-xl shadow-slate-200 dark:shadow-indigo-900/20">
-                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 01-2-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
               </div>
               <span className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">STITCH<span className="text-indigo-600 dark:text-indigo-400">FLOW</span></span>
             </div>
@@ -314,12 +355,62 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 </section>
+
+                <section className="space-y-10">
+                  <div className="flex items-center gap-4">
+                    <span className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[11px] font-black text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700">03</span>
+                    <h3 className="text-sm font-black uppercase tracking-[0.3em] text-slate-800 dark:text-slate-200">Technical Blueprint</h3>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                    <div className="bg-slate-950 dark:bg-indigo-900/10 rounded-[3rem] p-12 text-white border border-white/10 flex flex-col items-center justify-center text-center group hover:bg-slate-900 transition-all">
+                       <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center mb-6 transition-all ${newProject.techPackName ? 'bg-emerald-500 shadow-emerald-500/20 shadow-2xl' : 'bg-white/10'}`}>
+                          {newProject.techPackName ? (
+                             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
+                          ) : (
+                             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                          )}
+                       </div>
+                       <h4 className="text-xl font-black mb-2">{newProject.techPackName || 'Upload Master Tech Pack'}</h4>
+                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-8">PDF, Excel, or Image Formats</p>
+                       <button type="button" onClick={() => techPackFileRef.current?.click()} className="bg-white text-slate-950 px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-400 hover:text-white transition-all">
+                          {newProject.techPackName ? 'Change Document' : 'Select File'}
+                       </button>
+                       <input type="file" ref={techPackFileRef} className="hidden" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" onChange={handleTechPackSelection} />
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-800 rounded-[3rem] border border-slate-100 dark:border-slate-700 p-10 flex flex-col">
+                       <div className="flex items-center justify-between mb-6">
+                          <h4 className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">AI Tech Pack Audit</h4>
+                          {isAnalyzingTP && <div className="flex gap-1"><div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce"></div><div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce [animation-delay:-0.15s]"></div><div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce [animation-delay:-0.3s]"></div></div>}
+                       </div>
+                       
+                       <div className="flex-1 bg-slate-50 dark:bg-slate-900 rounded-[2rem] p-6 overflow-y-auto custom-scrollbar border border-slate-100 dark:border-slate-800">
+                          {isAnalyzingTP ? (
+                            <div className="h-full flex flex-col items-center justify-center text-center">
+                               <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Extracting Buyer Requirements...</p>
+                            </div>
+                          ) : tpAiSummary ? (
+                            <div className="prose prose-sm dark:prose-invert">
+                               <pre className="text-[12px] font-medium whitespace-pre-wrap leading-relaxed text-slate-700 dark:text-slate-300 font-inter">
+                                 {tpAiSummary}
+                               </pre>
+                            </div>
+                          ) : (
+                            <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
+                               <svg className="w-12 h-12 text-slate-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                               <p className="text-[10px] font-black uppercase tracking-widest">Awaiting Technical Document</p>
+                            </div>
+                          )}
+                       </div>
+                    </div>
+                  </div>
+                </section>
               </form>
             </div>
 
             <div className="px-10 py-10 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0 flex items-center justify-end gap-4">
                <button onClick={() => setIsAddModalOpen(false)} className="px-10 py-5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all">Cancel</button>
-               <button form="style-init-form" type="submit" className="bg-indigo-600 text-white px-12 py-5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-2xl active:scale-[0.98]">Deploy Production</button>
+               <button form="style-init-form" type="submit" disabled={isAnalyzingTP} className="bg-indigo-600 text-white px-12 py-5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] hover:bg-indigo-700 transition-all shadow-2xl active:scale-[0.98] disabled:opacity-50">Deploy Production</button>
             </div>
           </div>
         </div>

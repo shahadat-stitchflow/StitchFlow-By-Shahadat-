@@ -8,11 +8,22 @@ export enum StepStatus {
 }
 
 export type WorkflowStepId = 
-  | 'design'
-  | 'fabrics'
-  | 'pattern'
-  | 'prototype'
-  | 'final_approval';
+  | 'inquiry'
+  | 'design_dev'
+  | 'costing_quotation'
+  | 'proto_sample'
+  | 'fit_sample'
+  | 'lab_dip'
+  | 'final_costing'
+  | 'po_release'
+  | 'fabric_procurement'
+  | 'trims_procurement'
+  | 'pp_meeting'
+  | 'bulk_cutting'
+  | 'sewing'
+  | 'finishing'
+  | 'inspection'
+  | 'shipment';
 
 export interface StepRecord {
   id: string;
@@ -28,6 +39,7 @@ export interface WorkflowStep {
   updatedAt: string;
   dueDate?: string;
   records?: StepRecord[];
+  aiSummary?: string;
 }
 
 export interface UserProfile {
@@ -49,7 +61,6 @@ export interface CollaborationState {
   lastSeen: number;
 }
 
-// Added ChatMessage interface to resolve missing exported member error in AIAdvisor.tsx
 export interface ChatMessage {
   role: 'user' | 'model';
   content: string;
@@ -71,9 +82,9 @@ export interface Project {
   fabricType?: string;
   fabricWeight?: string;
   fabricComposition?: string;
-  // Added fields to support usage in App.tsx and ProjectDashboard components
   isUrgent?: boolean;
   techPackUrl?: string;
+  techPackName?: string;
   todoItems?: any[];
   targetFob?: number;
   gender?: string;

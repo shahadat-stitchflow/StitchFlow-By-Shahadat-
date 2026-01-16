@@ -5,6 +5,37 @@ import { GoogleGenAI, Type } from "@google/genai";
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
+ * Analyzes an uploaded Tech Pack (PDF or Image) to extract buyer requirements.
+ */
+export const analyzeTechPackFile = async (base64Data: string, mimeType: string) => {
+  try {
+    const filePart = {
+      inlineData: {
+        data: base64Data.split(',')[1], // Remove the data:mime/type;base64, prefix
+        mimeType: mimeType,
+      },
+    };
+
+    const textPart = {
+      text: "Analyze this garment Tech Pack. Extract: 1. Fabric/Material details. 2. Key construction notes. 3. Trims/Accessories. 4. Potential production risks or special buyer requirements mentioned. Provide a concise bullet-point summary suitable for a UI dashboard."
+    };
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: { parts: [filePart, textPart] },
+      config: {
+        systemInstruction: "You are a Technical Designer and Quality Auditor. Summarize garments technical specifications with high precision."
+      }
+    });
+
+    return response.text || "Could not analyze the tech pack content.";
+  } catch (error) {
+    console.error("Tech Pack Analysis Error:", error);
+    return "AI failed to parse the tech pack. Please ensure the file is readable.";
+  }
+};
+
+/**
  * Uses Gemini 3 Pro with thinking mode for deep analysis of production and costing.
  */
 export const getAIAdvice = async (prompt: string, context?: any) => {
@@ -17,7 +48,6 @@ export const getAIAdvice = async (prompt: string, context?: any) => {
         systemInstruction: "You are an elite Garments Industry Advisor with 20+ years of experience in Merchandising, Supply Chain, and Production. Provide highly efficient, tactical advice. Use thinking mode to analyze complex bottlenecks."
       }
     });
-    // Extract text using the .text property (getter)
     return response.text || "I couldn't generate a response at this time.";
   } catch (error) {
     console.error("AI Advice Error:", error);
