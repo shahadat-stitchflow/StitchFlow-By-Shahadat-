@@ -85,6 +85,8 @@ export interface Project {
   isUrgent?: boolean;
   techPackUrl?: string;
   techPackName?: string;
+  costingSheetUrl?: string;
+  costingSheetName?: string;
   todoItems?: any[];
   targetFob?: number;
   gender?: string;

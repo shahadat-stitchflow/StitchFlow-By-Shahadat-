@@ -169,6 +169,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, o
   const headerPhotoInputRef = useRef<HTMLInputElement>(null);
   const excelFileRef = useRef<HTMLInputElement>(null);
   const techPackInputRef = useRef<HTMLInputElement>(null);
+  const costingSheetInputRef = useRef<HTMLInputElement>(null);
 
   const currentUser: UserProfile = useMemo(() => {
     const saved = localStorage.getItem('stitchflow_user_profile');
@@ -232,8 +233,30 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, o
     }
   };
 
+  const handleCostingSheetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        onUpdateProject({ 
+          costingSheetUrl: reader.result as string, 
+          costingSheetName: file.name 
+        });
+        
+        // If it's a text-based file, pre-fill the strategic analyst
+        if (file.type.includes('text') || file.name.endsWith('.csv')) {
+           const textReader = new FileReader();
+           textReader.onload = (txtEvent) => {
+              setRawCostingInput(txtEvent.target?.result as string);
+           };
+           textReader.readAsText(file);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleExportCosting = () => {
-    const headers = ['Field', 'Value'];
     const baseData = [
       ['Style Name', project.styleName],
       ['Style Number', project.styleNumber],
@@ -413,7 +436,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, o
           
           <div className="flex border-b border-slate-100 dark:border-slate-800">
             <button onClick={() => setActiveTab('workflow')} className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition ${activeTab === 'workflow' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400'}`}>Health</button>
-            <button onClick={() => setActiveTab('planner')} className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition ${activeTab === 'planner' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400'}`}>Spec</button>
+            <button onClick={() => setActiveTab('planner')} className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition ${activeTab === 'planner' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400'}`}>Planner</button>
             <button onClick={() => setActiveTab('techpack')} className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition ${activeTab === 'techpack' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400'}`}>Route</button>
           </div>
         </div>
@@ -447,23 +470,82 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, o
                )}
             </div>
           ) : activeTab === 'planner' ? (
-            <div className="p-6 space-y-6">
-               <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm space-y-4">
-                  <h4 className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-2">Commercial Summary</h4>
-                  <div className="space-y-3">
-                    <div className="flex justify-between border-b dark:border-slate-800 pb-2">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase">Buyer</span>
-                      <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase">{project.buyerName}</span>
+            <div className="p-6 space-y-6 animate-in fade-in duration-500">
+               {/* STYLES CARD (Specification DNA) */}
+               <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm space-y-5">
+                  <h4 className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-2">Style DNA</h4>
+                  <div className="space-y-4">
+                    <div className="flex justify-between border-b dark:border-slate-800 pb-3">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Buyer</span>
+                      <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase truncate ml-4">{project.buyerName}</span>
                     </div>
-                    <div className="flex justify-between border-b dark:border-slate-800 pb-2">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase">Season</span>
-                      <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase">{project.season}</span>
+                    <div className="flex justify-between border-b dark:border-slate-800 pb-3">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Season</span>
+                      <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase">{project.season}</span>
                     </div>
-                    <div className="flex justify-between border-b dark:border-slate-800 pb-2">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase">Order Qty</span>
-                      <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase">{project.quantity.toLocaleString()}</span>
+                    <div className="flex justify-between border-b dark:border-slate-800 pb-3">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Order Qty</span>
+                      <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase">{project.quantity.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between border-b dark:border-slate-800 pb-3">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Gender</span>
+                      <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase">{project.gender || 'Mens'}</span>
+                    </div>
+                    <div className="flex justify-between border-b dark:border-slate-800 pb-3">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Target FOB</span>
+                      <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase">${project.targetFob?.toFixed(2) || '0.00'}</span>
                     </div>
                   </div>
+               </div>
+
+               {/* COSTING SHEET CARD */}
+               <div className="bg-emerald-600 dark:bg-emerald-700 rounded-[2rem] p-6 text-white shadow-xl space-y-5">
+                  <div className="flex items-center gap-3">
+                    <svg className="w-5 h-5 text-emerald-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 17v-2a2 2 0 012-2h2a2 2 0 012 2v2m-6-9l3-3m0 0l3 3m-3-3v12" /></svg>
+                    <h4 className="text-[11px] font-black uppercase tracking-widest">Costing Sheets (Excel)</h4>
+                  </div>
+                  
+                  {project.costingSheetUrl ? (
+                    <div className="bg-white/10 p-4 rounded-2xl flex items-center justify-between group border border-white/5">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m-1 4h1m5-8h1m-1 4h1m-1 4h1" /></svg>
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="text-[10px] font-black truncate max-w-[120px]">{project.costingSheetName || 'Costing_Breakdown.xlsx'}</p>
+                          <p className="text-[8px] opacity-60 uppercase font-bold">Live Document</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => costingSheetInputRef.current?.click()}
+                          className="p-2 bg-white/10 rounded-lg hover:bg-white/30 transition-all"
+                          title="Update Costing"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                        </button>
+                        <a 
+                          href={project.costingSheetUrl} 
+                          download={project.costingSheetName || 'Costing.xlsx'}
+                          className="p-2 bg-white/20 rounded-lg hover:bg-white/40 transition-all"
+                          title="Download"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 13l-3 3m0 0l-3-3m3 3V8m0 13a9 9 0 110-18 9 9 0 010 18z" /></svg>
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => costingSheetInputRef.current?.click()}
+                      className="w-full bg-white/5 border-2 border-dashed border-white/20 p-8 rounded-2xl flex flex-col items-center gap-3 hover:bg-white/10 transition-all group"
+                    >
+                      <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Upload Custom Costing Excel</span>
+                    </button>
+                  )}
+                  <input type="file" ref={costingSheetInputRef} className="hidden" accept=".xls,.xlsx,.csv,.txt" onChange={handleCostingSheetUpload} />
                </div>
 
                <div className="bg-indigo-600 rounded-[2rem] p-6 text-white shadow-xl space-y-5">
@@ -494,7 +576,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, o
                         <a 
                           href={project.techPackUrl} 
                           download={project.techPackName || 'TechPack.pdf'}
-                          className="p-2 bg-emerald-500 rounded-lg hover:bg-emerald-400 transition-all"
+                          className="p-2 bg-indigo-500 rounded-lg hover:bg-emerald-400 transition-all"
                           title="Download"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 13l-3 3m0 0l-3-3m3 3V8m0 13a9 9 0 110-18 9 9 0 010 18z" /></svg>

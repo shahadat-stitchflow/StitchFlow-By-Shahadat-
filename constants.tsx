@@ -22,7 +22,7 @@ export const WORKFLOW_STRUCTURE: { id: WorkflowStepId; label: string }[] = [
 
 const generateDueDate = (baseIdx: number, currentIdx: number) => {
   const date = new Date();
-  date.setDate(date.getDate() + (currentIdx - baseIdx) * 5); // 5 days average per stage
+  date.setDate(date.getDate() + (currentIdx - baseIdx) * 5);
   return date.toISOString().split('T')[0];
 };
 
@@ -82,6 +82,52 @@ export const MOCK_PROJECTS: Project[] = [
       status: idx < 5 ? StepStatus.COMPLETED : idx === 5 ? StepStatus.IN_PROGRESS : StepStatus.PENDING,
       updatedAt: new Date().toISOString(),
       dueDate: generateDueDate(5, idx),
+      records: []
+    })),
+  },
+  {
+    id: 'p3',
+    styleName: 'Washed Denim Jacket',
+    styleNumber: 'JK-24-H&M',
+    buyerName: 'H&M',
+    season: 'Spring 25',
+    quantity: 8500,
+    shipDate: '2025-02-10',
+    currentStepIndex: 1,
+    productImageUrl: 'https://images.unsplash.com/photo-1576905341935-424522432138?q=80&w=800&auto=format&fit=crop',
+    fabricType: '14oz Rigid Denim',
+    targetFob: 18.75,
+    gender: 'Womens',
+    colorways: '2',
+    workflow: WORKFLOW_STRUCTURE.map((step, idx) => ({
+      id: step.id,
+      label: step.label,
+      status: idx < 1 ? StepStatus.COMPLETED : idx === 1 ? StepStatus.IN_PROGRESS : StepStatus.PENDING,
+      updatedAt: new Date().toISOString(),
+      dueDate: generateDueDate(1, idx),
+      records: []
+    })),
+  },
+  {
+    id: 'p4',
+    styleName: 'Cargo Utility Joggers',
+    styleNumber: 'JG-24-GAP',
+    buyerName: 'GAP Inc',
+    season: 'Fall 24',
+    quantity: 15000,
+    shipDate: '2024-09-30',
+    currentStepIndex: 10,
+    productImageUrl: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?q=80&w=800&auto=format&fit=crop',
+    fabricType: 'Stretch Twill 280GSM',
+    targetFob: 11.45,
+    gender: 'Mens',
+    colorways: '5',
+    workflow: WORKFLOW_STRUCTURE.map((step, idx) => ({
+      id: step.id,
+      label: step.label,
+      status: idx < 10 ? StepStatus.COMPLETED : idx === 10 ? StepStatus.IN_PROGRESS : StepStatus.PENDING,
+      updatedAt: new Date().toISOString(),
+      dueDate: generateDueDate(10, idx),
       records: []
     })),
   }
